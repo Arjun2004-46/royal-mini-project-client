@@ -1,9 +1,8 @@
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
-import { Notification, notificationService, incidentService } from '../services/api';
+import { Notification, notificationService } from '../services/api';
 
 interface NotificationState {
   pendingNotifications: Notification[];
-  historicalNotifications: Notification[];
   isSoundEnabled: boolean;
   isPolling: boolean;
   error: string | null;
@@ -11,7 +10,6 @@ interface NotificationState {
 
 type NotificationAction =
   | { type: 'SET_PENDING_NOTIFICATIONS'; payload: Notification[] }
-  | { type: 'SET_HISTORICAL_NOTIFICATIONS'; payload: Notification[] }
   | { type: 'ADD_PENDING_NOTIFICATION'; payload: Notification }
   | { type: 'ACKNOWLEDGE_NOTIFICATION'; payload: string }
   | { type: 'TOGGLE_SOUND'; payload: boolean }
@@ -20,7 +18,6 @@ type NotificationAction =
 
 const initialState: NotificationState = {
   pendingNotifications: [],
-  historicalNotifications: [],
   isSoundEnabled: true,
   isPolling: false,
   error: null,
@@ -35,8 +32,6 @@ function notificationReducer(state: NotificationState, action: NotificationActio
   switch (action.type) {
     case 'SET_PENDING_NOTIFICATIONS':
       return { ...state, pendingNotifications: action.payload };
-    case 'SET_HISTORICAL_NOTIFICATIONS':
-      return { ...state, historicalNotifications: action.payload };
     case 'ADD_PENDING_NOTIFICATION':
       return {
         ...state,
@@ -47,9 +42,6 @@ function notificationReducer(state: NotificationState, action: NotificationActio
         ...state,
         pendingNotifications: state.pendingNotifications.filter(
           (n) => n.id !== action.payload
-        ),
-        historicalNotifications: state.historicalNotifications.map(
-          (n) => n.id === action.payload ? { ...n, acknowledged: true } : n
         ),
       };
     case 'TOGGLE_SOUND':

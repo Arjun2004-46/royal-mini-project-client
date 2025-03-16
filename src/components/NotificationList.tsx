@@ -1,8 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Box,
-  Tabs,
-  Tab,
   List,
   ListItem,
   ListItemText,
@@ -11,8 +9,6 @@ import {
   IconButton,
   Typography,
   Chip,
-  CircularProgress,
-  Pagination,
   Paper,
   useTheme,
 } from '@mui/material';
@@ -44,71 +40,10 @@ const StyledListItem = styled(ListItem)(({ theme }) => ({
   transition: 'background-color 0.2s ease-in-out',
 }));
 
-interface TabPanelProps {
-  children?: React.ReactNode;
-  index: number;
-  value: number;
-}
-
-function TabPanel(props: TabPanelProps) {
-  const { children, value, index, ...other } = props;
-
-  return (
-    <div
-      role="tabpanel"
-      hidden={value !== index}
-      id={`notification-tabpanel-${index}`}
-      aria-labelledby={`notification-tab-${index}`}
-      {...other}
-    >
-      {value === index && <Box sx={{ p: 3 }}>{children}</Box>}
-    </div>
-  );
-}
-
 export const NotificationList: React.FC = () => {
   const theme = useTheme();
   const { state, dispatch } = useNotifications();
-  const [tabValue, setTabValue] = useState(0);
-  const [page, setPage] = useState(1);
-  const [loading, setLoading] = useState(false);
   const [selectedNotification, setSelectedNotification] = useState<Notification | null>(null);
-  const [totalPages, setTotalPages] = useState(1);
-
-  const ITEMS_PER_PAGE = 10;
-
-  const fetchHistoricalNotifications = async () => {
-    try {
-      setLoading(true);
-      const response = await notificationService.getNotificationHistory({
-        page,
-        limit: ITEMS_PER_PAGE,
-      });
-      if (response && response.notifications) {
-        dispatch({ type: 'SET_HISTORICAL_NOTIFICATIONS', payload: response.notifications });
-        setTotalPages(Math.ceil(response.total / ITEMS_PER_PAGE));
-      } else {
-        console.error('Invalid response format from history endpoint');
-        dispatch({ type: 'SET_HISTORICAL_NOTIFICATIONS', payload: [] });
-      }
-    } catch (error) {
-      console.error('Failed to fetch historical notifications:', error);
-      dispatch({ type: 'SET_HISTORICAL_NOTIFICATIONS', payload: [] });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (tabValue === 1) {
-      fetchHistoricalNotifications();
-    }
-  }, [page, tabValue]);
-
-  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
-    setTabValue(newValue);
-    setPage(1);
-  };
 
   const handleNotificationClick = (notification: Notification) => {
     setSelectedNotification(notification);
@@ -122,10 +57,6 @@ export const NotificationList: React.FC = () => {
     try {
       await notificationService.acknowledgeNotification(notification.id);
       dispatch({ type: 'ACKNOWLEDGE_NOTIFICATION', payload: notification.id });
-      // If we're in the history tab, refresh the list
-      if (tabValue === 1) {
-        fetchHistoricalNotifications();
-      }
     } catch (error) {
       console.error('Failed to acknowledge notification:', error);
     }
@@ -200,74 +131,22 @@ export const NotificationList: React.FC = () => {
   return (
     <Box>
       <StyledPaper>
-        <Tabs 
-          value={tabValue} 
-          onChange={handleTabChange}
-          sx={{
-            '& .MuiTab-root': {
-              color: theme.palette.text.secondary,
-              '&.Mui-selected': {
-                color: theme.palette.primary.main,
-              },
-            },
-            borderBottom: `1px solid ${theme.palette.divider}`,
-          }}
-        >
-          <Tab label="Pending" />
-          <Tab label="History" />
-        </Tabs>
+        <Typography variant="h6" gutterBottom>
+          Pending Notifications
+        </Typography>
       </StyledPaper>
 
-      <TabPanel value={tabValue} index={0}>
-        <List>
-          {state.pendingNotifications.map(renderNotificationItem)}
-        </List>
-      </TabPanel>
-
-      <TabPanel value={tabValue} index={1}>
-        {loading ? (
-          <Box display="flex" justifyContent="center" p={3}>
-            <CircularProgress />
-          </Box>
-        ) : !state.historicalNotifications || state.historicalNotifications.length === 0 ? (
+      <List>
+        {state.pendingNotifications.length === 0 ? (
           <Box display="flex" justifyContent="center" p={3}>
             <Typography color="textSecondary">
-              No historical notifications found
+              No pending notifications
             </Typography>
           </Box>
         ) : (
-          <>
-            <List>
-              {state.historicalNotifications.map(renderNotificationItem)}
-            </List>
-            <Box display="flex" justifyContent="center" mt={2}>
-              <Pagination
-                count={totalPages}
-                page={page}
-                onChange={(_, value) => setPage(value)}
-                color="primary"
-                sx={{
-                  '& .MuiPaginationItem-root': {
-                    color: theme.palette.text.primary,
-                  },
-                  '& .MuiPaginationItem-page.Mui-selected': {
-                    backgroundColor: theme.palette.primary.main,
-                    color: theme.palette.primary.contrastText,
-                    '&:hover': {
-                      backgroundColor: theme.palette.primary.dark,
-                    },
-                  },
-                  '& .MuiPaginationItem-page:hover': {
-                    backgroundColor: theme.palette.mode === 'dark'
-                      ? 'rgba(255, 255, 255, 0.08)'
-                      : 'rgba(0, 0, 0, 0.04)',
-                  },
-                }}
-              />
-            </Box>
-          </>
+          state.pendingNotifications.map(renderNotificationItem)
         )}
-      </TabPanel>
+      </List>
 
       {selectedNotification && (
         <NotificationModal
