@@ -1,0 +1,40 @@
+/* Mobile-specific styles */
+@media screen and (max-width: 768px) {
+  .mobile-container {
+    padding: 8px !important;
+    margin: 8px !important;
+  }
+
+  .mobile-search {
+    width: 100% !important;
+    margin-top: 16px !important;
+  }
+
+  .mobile-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+  }
+
+  .mobile-list-item {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    padding: 16px 8px !important;
+  }
+
+  .mobile-list-item-content {
+    width: 100% !important;
+    margin-bottom: 8px !important;
+  }
+
+  .mobile-actions {
+    position: relative !important;
+    right: auto !important;
+    top: auto !important;
+    transform: none !important;
+    margin-top: 8px !important;
+  }
+
+  .mobile-chip {
+    margin: 8px 0 !important;
+  }
+} 
