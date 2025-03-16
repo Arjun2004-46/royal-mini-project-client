@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { Box, Paper, Typography, Switch, FormControlLabel, Alert, CircularProgress, Badge } from '@mui/material';
 import io, { ManagerOptions, SocketOptions } from 'socket.io-client';
-import { API_BASE_URL } from '../config';
+import { STREAMING_URL } from '../config';
 import '../mobile.css';
 
 interface FrameData {
@@ -18,12 +18,12 @@ interface IncidentData {
 
 const SOCKET_OPTIONS: Partial<ManagerOptions & SocketOptions> = {
   transports: ['websocket'],
-  reconnectionAttempts: 5,
-  reconnectionDelay: 1000,
-  reconnectionDelayMax: 5000,
-  timeout: 10000,
+  reconnectionAttempts: 10,
+  reconnectionDelay: 2000,
+  reconnectionDelayMax: 10000,
+  timeout: 20000,
   forceNew: true,
-  autoConnect: true,
+  autoConnect: true
 };
 
 const LiveStream = () => {
@@ -49,21 +49,28 @@ const LiveStream = () => {
 
     const frame = frameBuffer.current.shift();
     if (frame) {
-      const img = new Image();
-      img.onload = () => {
-        if (imageRef.current) {
-          imageRef.current.src = img.src;
-          setIsLoading(false);
-          
-          // Check if this frame has an incident
-          if (frame.incident_detected) {
-            handleIncidentDetection();
+      if (imageRef.current) {
+        const img = new Image();
+        img.onload = () => {
+          if (imageRef.current) {
+            imageRef.current.src = img.src;
+            setIsLoading(false);
+            
+            if (frame.incident_detected) {
+              handleIncidentDetection();
+            }
+            
+            frameRequestPending.current = false;
+            requestAnimationFrame(() => scheduleNextFrame());
           }
-        }
-        frameRequestPending.current = false;
-        scheduleNextFrame();
-      };
-      img.src = `data:image/jpeg;base64,${frame.frame}`;
+        };
+        img.onerror = () => {
+          console.error('Failed to load frame');
+          frameRequestPending.current = false;
+          scheduleNextFrame();
+        };
+        img.src = `data:image/jpeg;base64,${frame.frame}`;
+      }
     } else {
       frameRequestPending.current = false;
       scheduleNextFrame();
@@ -71,19 +78,15 @@ const LiveStream = () => {
   }, [isStreaming]);
 
   const handleIncidentDetection = useCallback(() => {
-    // Increase incident count
     setIncidentCount(prev => prev + 1);
     
-    // Set incident detected flag
     setIncidentDetected(true);
     setLastIncidentTime(Date.now());
     
-    // Clear any existing timeout
     if (incidentTimeoutRef.current) {
       clearTimeout(incidentTimeoutRef.current);
     }
     
-    // Set a timeout to clear the incident flag after 5 seconds
     incidentTimeoutRef.current = setTimeout(() => {
       setIncidentDetected(false);
     }, 5000);
@@ -99,21 +102,20 @@ const LiveStream = () => {
   const handleFrame = useCallback((data: FrameData) => {
     if (!isStreaming) return;
 
-    // Check for out-of-order frames
     if (data.frame_number <= lastFrameNumber.current) {
       return;
     }
     lastFrameNumber.current = data.frame_number;
 
-    // Add frame to buffer
     frameBuffer.current.push(data);
-
-    // Keep buffer size reasonable
-    while (frameBuffer.current.length > 2) {
+    
+    while (frameBuffer.current.length > 3) {
       frameBuffer.current.shift();
     }
 
-    scheduleNextFrame();
+    if (!frameRequestPending.current) {
+      scheduleNextFrame();
+    }
   }, [isStreaming, scheduleNextFrame]);
 
   const handleIncident = useCallback((data: IncidentData) => {
@@ -122,7 +124,15 @@ const LiveStream = () => {
   }, [handleIncidentDetection]);
 
   useEffect(() => {
-    const socket = io(API_BASE_URL, SOCKET_OPTIONS);
+    const socket = io(STREAMING_URL, {
+      ...SOCKET_OPTIONS,
+      auth: {
+        token: undefined
+      },
+      ackTimeout: 30000,
+      retries: 3
+    });
+    let reconnectAttempts = 0;
     
     socket.on('connect', () => {
       console.log('Connected to server');
@@ -130,10 +140,11 @@ const LiveStream = () => {
       setError(null);
       frameBuffer.current = [];
       lastFrameNumber.current = -1;
+      reconnectAttempts = 0;
     });
 
-    socket.on('disconnect', () => {
-      console.log('Disconnected from server');
+    socket.on('disconnect', (reason) => {
+      console.log('Disconnected from server:', reason);
       setIsConnected(false);
       setError('Connection to server lost');
       setIsLoading(true);
@@ -141,17 +152,26 @@ const LiveStream = () => {
         window.cancelAnimationFrame(rafId.current);
         rafId.current = null;
       }
+      
+      frameBuffer.current = [];
+      lastFrameNumber.current = -1;
+    });
+
+    socket.on('connect_error', (error) => {
+      console.error('Connection error:', error);
+      reconnectAttempts++;
+      setError(`Failed to connect to video stream (Attempt ${reconnectAttempts})`);
+      setIsConnected(false);
+      setIsLoading(true);
+    });
+
+    socket.on('error', (error) => {
+      console.error('Socket error:', error);
+      setError('Stream error occurred');
     });
 
     socket.on('video_frame', handleFrame);
     socket.on('incident_detected', handleIncident);
-
-    socket.on('connect_error', (error) => {
-      console.error('Connection error:', error);
-      setError('Failed to connect to video stream');
-      setIsConnected(false);
-      setIsLoading(true);
-    });
 
     return () => {
       socket.off('video_frame', handleFrame);
@@ -164,6 +184,7 @@ const LiveStream = () => {
       if (incidentTimeoutRef.current) {
         clearTimeout(incidentTimeoutRef.current);
       }
+      frameBuffer.current = [];
     };
   }, [handleFrame, handleIncident]);
 
@@ -183,7 +204,6 @@ const LiveStream = () => {
     }
   };
 
-  // Format the last incident time
   const formattedIncidentTime = lastIncidentTime 
     ? new Date(lastIncidentTime).toLocaleTimeString() 
     : null;
