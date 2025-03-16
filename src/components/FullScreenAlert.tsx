@@ -6,6 +6,7 @@ import {
   Paper,
   IconButton,
   useTheme,
+  Divider,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import { styled } from '@mui/material/styles';
@@ -35,10 +36,48 @@ const AlertContent = styled(Paper)(({ theme }) => ({
   width: '90%',
   position: 'relative',
   animation: 'slideIn 0.3s ease-in-out',
+  backgroundColor: theme.palette.background.paper,
+  border: `1px solid ${theme.palette.divider}`,
+  boxShadow: theme.shadows[24],
   '@keyframes slideIn': {
     '0%': { transform: 'translateY(-20px)', opacity: 0 },
     '100%': { transform: 'translateY(0)', opacity: 1 },
   },
+}));
+
+const AlertHeader = styled(Box)(({ theme }) => ({
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  marginBottom: theme.spacing(3),
+}));
+
+const AlertTitle = styled(Typography)(({ theme }) => ({
+  fontWeight: 600,
+  color: theme.palette.text.primary,
+}));
+
+const AlertBody = styled(Box)(({ theme }) => ({
+  marginBottom: theme.spacing(4),
+}));
+
+const AlertMessage = styled(Typography)(({ theme }) => ({
+  marginBottom: theme.spacing(2),
+  color: theme.palette.text.primary,
+}));
+
+const AlertTimestamp = styled(Typography)(({ theme }) => ({
+  color: theme.palette.text.secondary,
+  fontSize: '0.875rem',
+}));
+
+const AlertActions = styled(Box)(({ theme }) => ({
+  display: 'flex',
+  justifyContent: 'flex-end',
+  gap: theme.spacing(2),
+  marginTop: theme.spacing(3),
+  paddingTop: theme.spacing(2),
+  borderTop: `1px solid ${theme.palette.divider}`,
 }));
 
 interface FullScreenAlertProps {
@@ -98,55 +137,77 @@ export const FullScreenAlert: React.FC<FullScreenAlertProps> = ({
         src={notification.type === 'fire_alert' ? '/sounds/fire_alert.wav' : '/sounds/fall_alert.wav'}
       />
       <AlertContent elevation={24}>
-        <IconButton
-          sx={{
-            position: 'absolute',
-            right: theme.spacing(1),
-            top: theme.spacing(1),
-          }}
-          onClick={onClose}
-        >
-          <CloseIcon />
-        </IconButton>
-        <Box textAlign="center" mb={3}>
-          <Typography variant="h4" component="h1" gutterBottom>
+        <AlertHeader>
+          <AlertTitle variant="h5">
             {notification.type === 'fire_alert' ? '🚨 Fire Alert' : notification.type === 'fall_alert' ? '⚠️ Fall Alert' : '🔔 Test Alert'}
-          </Typography>
-          <Typography
-            variant="h6"
+          </AlertTitle>
+          <IconButton
+            onClick={onClose}
+            size="small"
             sx={{
-              color: getSeverityColor(notification.data.severity || 'low'),
-              fontWeight: 'bold',
+              color: theme.palette.text.secondary,
+              '&:hover': {
+                color: theme.palette.text.primary,
+              },
             }}
           >
-            {notification.data.severity?.toUpperCase() || 'Unknown'} Severity
-          </Typography>
-        </Box>
-        <Box mb={4}>
-          <Typography variant="body1" paragraph>
+            <CloseIcon />
+          </IconButton>
+        </AlertHeader>
+
+        <Divider sx={{ mb: 3 }} />
+
+        <AlertBody>
+          <Box display="flex" alignItems="center" gap={1} mb={2}>
+            <Typography
+              variant="subtitle1"
+              sx={{
+                color: getSeverityColor(notification.data.severity || 'low'),
+                fontWeight: 600,
+              }}
+            >
+              {notification.data.severity?.toUpperCase() || 'Unknown'} Severity
+            </Typography>
+          </Box>
+          <AlertMessage variant="body1">
             {notification.data.message}
-          </Typography>
-          <Typography variant="body2" color="textSecondary">
-            Time: {new Date(notification.timestamp).toLocaleString()}
-          </Typography>
-        </Box>
-        <Box display="flex" justifyContent="center" gap={2}>
-          <Button
-            variant="contained"
-            color="primary"
-            onClick={onAcknowledge}
-            size="large"
-          >
-            Acknowledge
-          </Button>
+          </AlertMessage>
+          <AlertTimestamp>
+            {new Date(notification.timestamp).toLocaleString()}
+          </AlertTimestamp>
+        </AlertBody>
+
+        <AlertActions>
           <Button
             variant="outlined"
             onClick={onClose}
-            size="large"
+            sx={{
+              color: theme.palette.text.secondary,
+              borderColor: theme.palette.divider,
+              '&:hover': {
+                borderColor: theme.palette.text.primary,
+                color: theme.palette.text.primary,
+              },
+            }}
           >
             Close
           </Button>
-        </Box>
+          <Button
+            variant="contained"
+            onClick={onAcknowledge}
+            color="primary"
+            sx={{
+              backgroundColor: getSeverityColor(notification.data.severity || 'low'),
+              '&:hover': {
+                backgroundColor: theme.palette.mode === 'dark'
+                  ? theme.palette.primary.dark
+                  : theme.palette.primary.main,
+              },
+            }}
+          >
+            Acknowledge
+          </Button>
+        </AlertActions>
       </AlertContent>
     </Overlay>
   );
