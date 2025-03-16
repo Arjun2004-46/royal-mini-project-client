@@ -17,7 +17,8 @@ import {
 } from '@mui/material';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
 import MenuIcon from '@mui/icons-material/Menu';
-import LiveStream from './components/LiveStream';
+import HomePage from './components/HomePage';
+import LiveStreamPage from './components/LiveStreamPage';
 import Incidents from './components/Incidents';
 import IncidentDetail from './components/IncidentDetail';
 import './mobile.css';
@@ -25,12 +26,24 @@ import './mobile.css';
 const theme = createTheme({
   palette: {
     mode: 'dark',
+    primary: {
+      main: '#2196f3',
+    },
     background: {
+      default: '#121212',
       paper: '#1a1a1a',
     },
     text: {
       primary: '#ffffff',
       secondary: '#b3b3b3',
+    },
+  },
+  typography: {
+    h2: {
+      fontSize: '2.5rem',
+      '@media (min-width:600px)': {
+        fontSize: '3.75rem',
+      },
     },
   },
 });
@@ -44,7 +57,8 @@ function App() {
   };
 
   const menuItems = [
-    { text: 'Live Stream', path: '/' },
+    { text: 'Home', path: '/' },
+    { text: 'Live Stream', path: '/live' },
     { text: 'Incidents', path: '/incidents' },
   ];
 
@@ -79,7 +93,7 @@ function App() {
       <CssBaseline />
       <Router>
         <Box sx={{ flexGrow: 1 }}>
-          <AppBar position="static">
+          <AppBar position="static" elevation={0}>
             <Toolbar>
               {isMobile && (
                 <IconButton
@@ -93,7 +107,7 @@ function App() {
                 </IconButton>
               )}
               <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-                Smart CCTV Dashboard
+                Smart CCTV
               </Typography>
               {!isMobile && (
                 <Box>
@@ -103,6 +117,12 @@ function App() {
                       color="inherit"
                       component={Link}
                       to={item.path}
+                      sx={{
+                        mx: 1,
+                        '&:hover': {
+                          backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                        },
+                      }}
                     >
                       {item.text}
                     </Button>
@@ -130,13 +150,14 @@ function App() {
           >
             {drawer}
           </Drawer>
-          <Container maxWidth="xl" sx={{ mt: 4, px: { xs: 1, sm: 3 } }}>
+          <Box sx={{ flexGrow: 1, mt: 0 }}>
             <Routes>
-              <Route path="/" element={<LiveStream />} />
+              <Route path="/" element={<HomePage />} />
+              <Route path="/live" element={<LiveStreamPage />} />
               <Route path="/incidents" element={<Incidents />} />
               <Route path="/incidents/:uuid" element={<IncidentDetail />} />
             </Routes>
-          </Container>
+          </Box>
         </Box>
       </Router>
     </ThemeProvider>

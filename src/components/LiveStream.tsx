@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { Box, Paper, Typography, Switch, FormControlLabel, Alert, Slider, CircularProgress, Badge } from '@mui/material';
+import { Box, Paper, Typography, Switch, FormControlLabel, Alert, CircularProgress, Badge } from '@mui/material';
 import io, { ManagerOptions, SocketOptions } from 'socket.io-client';
 import { API_BASE_URL } from '../config';
 import '../mobile.css';
@@ -8,7 +8,6 @@ interface FrameData {
   frame: string;
   timestamp: number;
   frame_number: number;
-  quality?: number;
   incident_detected?: boolean;
 }
 
@@ -32,7 +31,6 @@ const LiveStream = () => {
   const [isStreaming, setIsStreaming] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isConnected, setIsConnected] = useState(false);
-  const [quality, setQuality] = useState<number>(100);
   const [isLoading, setIsLoading] = useState(true);
   const [incidentDetected, setIncidentDetected] = useState(false);
   const [incidentCount, setIncidentCount] = useState(0);
@@ -106,11 +104,6 @@ const LiveStream = () => {
       return;
     }
     lastFrameNumber.current = data.frame_number;
-
-    // Update quality if server sends it
-    if (data.quality) {
-      setQuality(data.quality);
-    }
 
     // Add frame to buffer
     frameBuffer.current.push(data);
@@ -190,10 +183,6 @@ const LiveStream = () => {
     }
   };
 
-  const handleQualityChange = (_event: Event, newValue: number | number[]) => {
-    setQuality(newValue as number);
-  };
-
   // Format the last incident time
   const formattedIncidentTime = lastIncidentTime 
     ? new Date(lastIncidentTime).toLocaleTimeString() 
@@ -211,35 +200,17 @@ const LiveStream = () => {
             Live Stream
           </Badge>
         </Typography>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <Box sx={{ width: 150 }}>
-            <Typography id="quality-slider" gutterBottom>
-              Quality
-            </Typography>
-            <Slider
-              value={quality}
-              onChange={handleQualityChange}
-              aria-labelledby="quality-slider"
-              valueLabelDisplay="auto"
-              step={10}
-              marks
-              min={10}
-              max={100}
+        <FormControlLabel
+          control={
+            <Switch
+              checked={isStreaming}
+              onChange={handleStreamToggle}
+              color="primary"
               disabled={!isConnected}
             />
-          </Box>
-          <FormControlLabel
-            control={
-              <Switch
-                checked={isStreaming}
-                onChange={handleStreamToggle}
-                color="primary"
-                disabled={!isConnected}
-              />
-            }
-            label={isStreaming ? "Stream Active" : "Stream Paused"}
-          />
-        </Box>
+          }
+          label={isStreaming ? "Stream Active" : "Stream Paused"}
+        />
       </Box>
       
       {error && (
@@ -272,7 +243,7 @@ const LiveStream = () => {
             width: '100%',
             height: '100%',
             objectFit: 'contain',
-            filter: !isStreaming ? 'grayscale(100%)' : `contrast(${quality}%)`,
+            filter: !isStreaming ? 'grayscale(100%)' : 'none',
             opacity: !isStreaming ? 0.5 : 1,
             display: isLoading ? 'none' : 'block',
           }}
